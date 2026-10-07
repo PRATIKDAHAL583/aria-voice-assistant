@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARIA — Voice Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0D12;
+    --panel:#12161D;
+    --border:#232838;
+    --accent:#E2A53D;
+    --accent-soft:rgba(226,165,61,0.14);
+    --text:#ECE8DD;
+    --text-muted:#8990A3;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    display:flex;
+    justify-content:center;
+  }
+  .app{
+    width:100%;
+    max-width:460px;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+  }
+  header{
+    padding:18px 20px 14px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 8px var(--accent);
+    flex-shrink:0;
+  }
+  header h1{font-size:17px;font-weight:600;margin:0;letter-spacing:0.02em;}
+  header p{font-size:12px;color:var(--text-muted);margin:1px 0 0;}
+
+  main{
+    flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 20px 18px;
+    gap:14px;
+  }
+  .mic-btn{
+    width:96px;height:96px;border-radius:50%;
+    background:var(--panel);
+    border:1.5px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+    position:relative;
+  }
+  .mic-btn svg{width:34px;height:34px;stroke:var(--text);transition:stroke .2s;}
+  .mic-btn.listening{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+    animation:pulseRing 1.5s infinite;
+  }
+  .mic-btn.listening svg{stroke:var(--accent);}
+  @keyframes pulseRing{
+    0%{box-shadow:0 0 0 0 rgba(226,165,61,0.45);}
+    70%{box-shadow:0 0 0 22px rgba(226,165,61,0);}
+    100%{box-shadow:0 0 0 0 rgba(226,165,61,0);}
+  }
+  #statusText{font-size:13px;color:var(--text-muted);min-height:16px;}
+
+  .log{
+    flex:1 1 auto;
+    overflow-y:auto;
+    padding:4px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .msg{font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.5;max-width:92%;}
+  .msg.user{align-self:flex-end;text-align:right;color:var(--text);}
+  .msg.user .who{color:var(--text-muted);}
+  .msg.aria{align-self:flex-start;border-left:2px solid var(--accent);padding-left:10px;color:var(--text);}
+  .msg.aria .who{color:var(--accent);}
+  .who{display:block;font-size:10px;letter-spacing:.04em;margin-bottom:2px;}
+
+  form{
+    flex-shrink:0;
+    display:flex;
+    gap:8px;
+    padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));
+    border-top:1px solid var(--border);
+    background:var(--bg);
+  }
+  form input{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:11px 13px;
+    color:var(--text);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px;
+    outline:none;
+  }
+  form input:focus{border-color:var(--accent);}
+  form button{
+    background:var(--accent);
+    color:#1A1203;
+    border:none;
+    border-radius:10px;
+    padding:0 16px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .log::-webkit-scrollbar{width:4px;}
+  .log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="dot"></div>
+    <div>
+      <h1>ARIA</h1>
+      <p>Voice assistant · runs in this tab</p>
+    </div>
+  </header>
+
+  <main>
+    <button class="mic-btn" id="micBtn" aria-label="Tap to speak">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+        <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+      </svg>
+    </button>
+    <div id="statusText">Tap to speak, or type below</div>
+  </main>
+
+  <div class="log" id="log"></div>
+
+  <form id="textForm">
+    <input id="textInput" placeholder="type a command…" autocomplete="off">
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<script>
+const log = document.getElementById('log');
+const statusText = document.getElementById('statusText');
+const micBtn = document.getElementById('micBtn');
+const textForm = document.getElementById('textForm');
+const textInput = document.getElementById('textInput');
+
+function addMsg(who, text){
+  const div = document.createElement('div');
+  div.className = 'msg ' + (who === 'you' ? 'user' : 'aria');
+  div.innerHTML = '<span class="who">' + who + '</span>' + text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function speak(text){
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.02;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function respond(text){
+  addMsg('aria', text);
+  speak(text);
+}
+
+const jokes = [
+  "I tried to find my own power supply once. Still searching.",
+  "I would tell you a networking joke, but it might not reach you.",
+  "I run on electricity and mild sarcasm."
+];
+
+let torchTrack = null;
+async function toggleTorch(on){
+  try{
+    if(!torchTrack){
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+      torchTrack = stream.getVideoTracks()[0];
+    }
+    await torchTrack.applyConstraints({advanced:[{torch:on}]});
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function handleCommand(raw){
+  const cmd = raw.toLowerCase().trim();
+  if(!cmd) return;
+
+  if(cmd.includes('time')){
+    respond("It's " + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ".");
+  } else if(cmd.includes('date') || cmd.includes('today')){
+    respond("Today is " + new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}) + ".");
+  } else if(cmd.includes('battery')){
+    if(navigator.getBattery){
+      const b = await navigator.getBattery();
+      respond("Battery is at " + Math.round(b.level*100) + " percent" + (b.charging ? ", and charging." : "."));
+    } else {
+      respond("This browser won't share battery info with me.");
+    }
+  } else if(cmd.includes('vibrate')){
+    if(navigator.vibrate){ navigator.vibrate(400); respond("Vibrating."); }
+    else respond("Vibration isn't supported here.");
+  } else if(cmd.includes('flashlight') || cmd.includes('torch')){
+    const turnOn = !cmd.includes('off');
+    const ok = await toggleTorch(turnOn);
+    respond(ok ? ("Flashlight " + (turnOn?"on":"off") + ".") : "I couldn't reach the flashlight on this device — some phones don't allow browser control of it.");
+  } else if(cmd.includes('joke')){
+    respond(jokes[Math.floor(Math.random()*jokes.length)]);
+  } else if(cmd.startsWith('remind me') || cmd.includes('reminder')){
+    const m = cmd.match(/(\d+)\s*(second|minute|hour)/);
+    if(m){
+      const n = parseInt(m[1]);
+      const unit = m[2];
+      const ms = unit.startsWith('second') ? n*1000 : unit.startsWith('minute') ? n*60000 : n*3600000;
+      const task = cmd.replace(/remind me( to)?/,'').replace(/in.*$/,'').trim() || "your reminder";
+      respond("Okay — I'll remind you about " + task + " in " + n + " " + unit + (n>1?"s":"") + ", as long as this tab stays open.");
+      setTimeout(() => {
+        respond("Reminder: " + task);
+        if('Notification' in window && Notification.permission === 'granted'){
+          new Notification('ARIA reminder', {body: task});
+        }
+      }, ms);
+      if('Notification' in window && Notification.permission === 'default'){
+        Notification.requestPermission();
+      }
+    } else {
+      respond("Tell me when — for example, 'remind me to stretch in 10 minutes'.");
+    }
+  } else if(cmd.includes('search for')){
+    const q = cmd.split('search for')[1].trim();
+    respond("Searching for " + q + ".");
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+  } else if(/^[0-9+\-*/.() ]+$/.test(cmd) && /\d/.test(cmd)){
+    try{
+      const result = Function('"use strict";return (' + cmd + ')')();
+      respond(cmd + " is " + result + ".");
+    }catch(e){ respond("That didn't compute cleanly."); }
+  } else if(cmd === 'clear' || cmd.includes('clear chat')){
+    log.innerHTML = '';
+    respond("Cleared.");
+  } else if(cmd.includes('help') || cmd.includes('what can you do')){
+    respond("I can tell the time or date, check battery, vibrate the phone, try the flashlight, do quick maths, set a reminder, search the web, or tell a joke.");
+  } else if(cmd.includes('hello') || cmd.includes('hi aria')){
+    respond("Hello. What do you need?");
+  } else {
+    respond("I don't have that command yet. Say 'help' to see what I can do.");
+  }
+}
+
+textForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const val = textInput.value;
+  if(!val.trim()) return;
+  addMsg('you', val);
+  textInput.value = '';
+  handleCommand(val);
+});
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SR){
+  const rec = new SR();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  let listening = false;
+
+  rec.onresult = (e) => {
+    const said = e.results[0][0].transcript;
+    addMsg('you', said);
+    handleCommand(said);
+  };
+  rec.onend = () => {
+    listening = false;
+    micBtn.classList.remove('listening');
+    statusText.textContent = 'Tap to speak, or type below';
+  };
+  rec.onerror = () => {
+    listening = false;
+    micBtn.classList.remove('listening');
+    statusText.textContent = 'Could not hear that — try again';
+  };
+
+  micBtn.addEventListener('click', () => {
+    if(listening){ rec.stop(); return; }
+    try{
+      rec.start();
+      listening = true;
+      micBtn.classList.add('listening');
+      statusText.textContent = 'Listening…';
+    }catch(e){}
+  });
+} else {
+  statusText.textContent = 'Voice input not supported here — type a command below';
+  micBtn.style.opacity = '0.4';
+  micBtn.style.cursor = 'default';
+}
+
+respond("ARIA online. How can I help?");
+</script>
+</body>
+</html>
